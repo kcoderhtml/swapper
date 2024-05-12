@@ -1,4 +1,5 @@
 import { intro, log, outro } from '@clack/prompts';
+import sharp from 'sharp';
 
 type SlackProfile = {
     real_name: string;
@@ -227,7 +228,7 @@ if (profile && profile.profile && profile.token) {
 
             // get user's profile image
             const imageResponse = await fetch(swapProfileData.profile.image_512)
-            Bun.write('new-profile-image.jpg', await imageResponse.arrayBuffer());
+            Bun.write('new-profile-image.jpg', await sharp(await imageResponse.arrayBuffer()).jpeg({ quality: 50 }).toBuffer());
 
             const formData = new FormData();
             const blob = await Bun.file('new-profile-image.jpg');
