@@ -1,18 +1,18 @@
 {
-  "name": "swapper",
-  "module": "index.ts",
-  "type": "module",
-  "scripts": {
-    "dev": "bun --watch index.ts"
-  },
-  "devDependencies": {
-    "@types/bun": "latest"
-  },
-  "peerDependencies": {
-    "typescript": "^5.0.0"
-  },
-  "dependencies": {
-    "@clack/core": "^0.3.4",
-    "@clack/prompts": "^0.7.0"
-  }
+	"name": "swapper",
+	"module": "index.ts",
+	"type": "module",
+	"scripts": {
+		"dev": "bun --watch index.ts"
+	},
+	"devDependencies": {
+		"@types/bun": "latest"
+	},
+	"peerDependencies": {
+		"typescript": "^5.0.0"
+	},
+	"dependencies": {
+		"@clack/core": "^0.3.4",
+		"@clack/prompts": "^0.7.0"
+	}
 }
