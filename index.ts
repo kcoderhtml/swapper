@@ -1,9 +1,15 @@
 import { intro, log, outro } from '@clack/prompts';
 
 type SlackProfile = {
+    real_name: string;
     display_name: string;
     status_text: string;
     status_emoji: string;
+    status_emoji_display_info: [];
+    status_expiration: number;
+    pronouns: string;
+    first_name: string;
+    last_name: string;
 } | null;
 
 type SlackToken = {
@@ -106,9 +112,17 @@ if (!profile) {
         log.error("Failed to fetch user's profile. Please try again.");
     }
 
-    console.log(profileData);
-
-    profile.profile = profileData.profile;
+    profile.profile = {
+        real_name: profileData.profile.real_name,
+        display_name: profileData.profile.display_name,
+        status_text: profileData.profile.status_text,
+        status_emoji: profileData.profile.status_emoji,
+        status_emoji_display_info: profileData.profile.status_emoji_display_info,
+        status_expiration: profileData.profile.status_expiration,
+        pronouns: profileData.profile.pronouns,
+        first_name: profileData.profile.first_name,
+        last_name: profileData.profile.last_name,
+    };
 
     // save profile
     await Bun.write('profile.json', JSON.stringify(profile));
@@ -120,7 +134,30 @@ if (profile && profile.profile && profile.token) {
     log.message("You are signed in and ready to swap!");
     log.info(`Your current profile is:\nDisplay Name: ${profile.profile.display_name}\nID: ${profile.token.authed_user.id}`);
     // if profile is saved, ask if user wants to restore it
+    const restoreProfile = await confirm("Would you like to restore your old profile?");
+    if (restoreProfile) {
+        // restore profile
+        log.info("Restoring profile...");
+        const restoreResponse = await fetch(`https://slack.com/api/users.profile.set`, {
+            method: 'POST',
+            headers: {
+                Authorization: `Bearer ${profile.token.authed_user.access_token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                profile: profile.profile
+            })
+        });
+        const restoreData = await restoreResponse.json();
 
+        console.log(restoreData);
+
+        if (!restoreData.ok) {
+            log.error("Failed to restore profile. Please try again.");
+        }
+
+        log.info("Profile restored successfully!");
+    }
     // else
     // choose user to swap with
 
