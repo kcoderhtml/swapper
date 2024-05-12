@@ -1,9 +1,34 @@
-import { intro, log, outro, text } from '@clack/prompts';
-import Elysia from 'elysia';
+import { intro, log, outro } from '@clack/prompts';
+
+type SlackProfile = {
+    display_name: string;
+    status_text: string;
+    status_emoji: string;
+} | null;
+
+type SlackToken = {
+    ok: boolean;
+    app_id: string;
+    authed_user: {
+        id: string;
+        scope: string;
+        access_token: string;
+        token_type: string;
+    };
+    team: {
+        id: string;
+        name: string;
+    };
+    enterprise: {
+        id: string;
+        name: string;
+    } | null;
+    is_enterprise_install: boolean;
+}
 
 type Profile = {
-    name: string;
-    token: string;
+    token: SlackToken;
+    profile: SlackProfile;
 };
 
 intro("Welcome to Swapper -- the slack tool to serve your every prankster need!");
@@ -33,7 +58,7 @@ if (!profile) {
     log.info(`Please sign in with slack to continue...\nhttps://slack.com/oauth/v2/authorize?scope=&user_scope=users.profile%3Aread%2Cusers.profile%3Awrite&redirect_uri=http%3A%2F%2Flocalhost%3A7734&client_id=${process.env.SLACK_CLIENT_ID}`);
 
     // listen for slack oauth response
-    const tokenPromise = new Promise<string>(async (resolve, reject) => {
+    const tokenPromise = new Promise<SlackToken>(async (resolve, reject) => {
         const server = Bun.serve(
             {
                 async fetch(req: Request): Promise<Response> {
@@ -62,22 +87,49 @@ if (!profile) {
     const token = await tokenPromise;
 
     log.info("User signed in successfully!");
-    console.log(token);
+    profile = {
+        token,
+        profile: null
+    };
+
+    // grab user's profile
+    log.info("Fetching user's profile...");
+    const profileResponse = await fetch(`https://slack.com/api/users.profile.get`, {
+        method: 'POST',
+        headers: {
+            Authorization: `Bearer ${profile.token.authed_user.access_token}`,
+        }
+    });
+    const profileData = await profileResponse.json();
+
+    if (!profileData.ok) {
+        log.error("Failed to fetch user's profile. Please try again.");
+    }
+
+    console.log(profileData);
+
+    profile.profile = profileData.profile;
+
+    // save profile
+    await Bun.write('profile.json', JSON.stringify(profile));
+    log.info("Profile saved successfully!");
 }
 
-// confirm user is signed in and ready to swap
+if (profile && profile.profile && profile.token) {
+    // confirm user is signed in and ready to swap
+    log.message("You are signed in and ready to swap!");
+    log.info(`Your current profile is:\nDisplay Name: ${profile.profile.display_name}\nID: ${profile.token.authed_user.id}`);
+    // if profile is saved, ask if user wants to restore it
 
-// if profile is saved, ask if user wants to restore it
+    // else
+    // choose user to swap with
 
-// else
-// choose user to swap with
+    // confirm swap
 
-// confirm swap
+    // swap
 
-// swap
+    // confirm swap completed
 
-// confirm swap completed
-
-// notify user that their old profile is saved
-
+    // notify user that their old profile is saved
+}
 outro("Thanks for using Swapper! Have a great day!");
