@@ -124,8 +124,12 @@ if (!profile) {
         last_name: profileData.profile.last_name,
     };
 
+    // get user's profile image
+    const imageResponse = await fetch(profileData.profile.image_1024);
+
     // save profile
     await Bun.write('profile.json', JSON.stringify(profile));
+    await Bun.write('profile-image.jpg', await imageResponse.arrayBuffer());
     log.info("Profile saved successfully!");
 }
 
@@ -150,23 +154,107 @@ if (profile && profile.profile && profile.token) {
         });
         const restoreData = await restoreResponse.json();
 
-        console.log(restoreData);
+        const image = await Bun.file('profile-image.jpg');
+        const formData = new FormData();
+        formData.append('image', image);
 
-        if (!restoreData.ok) {
+        const imageResponse = await fetch(`https://slack.com/api/users.setPhoto`, {
+            method: 'POST',
+            headers: {
+                Authorization: `Bearer ${profile.token.authed_user.access_token}`,
+            },
+            body: formData
+        });
+
+        const imageResponseData = await imageResponse.json();
+
+        if (!restoreData.ok || !imageResponseData.ok) {
             log.error("Failed to restore profile. Please try again.");
+            console.log(restoreData, imageResponseData);
         }
 
         log.info("Profile restored successfully!");
+    } else {
+        // choose user to swap with
+        const swapUser = await prompt("Please enter the ID of the user you would like to swap with:");
+        // get user's profile
+        log.info("Fetching user's profile...");
+        const swapProfileResponse = await fetch(`https://slack.com/api/users.profile.get?user=${swapUser}`, {
+            method: 'POST',
+            headers: {
+                Authorization: `Bearer ${profile.token.authed_user.access_token}`,
+                'Content-Type': 'application/json'
+            },
+        });
+
+        const swapProfileData = await swapProfileResponse.json();
+        if (!swapProfileData.ok) {
+            log.error("Failed to fetch user's profile. Please try again.");
+        }
+
+        const swapProfile: SlackProfile = {
+            real_name: swapProfileData.profile.real_name,
+            display_name: swapProfileData.profile.display_name,
+            status_text: swapProfileData.profile.status_text,
+            status_emoji: swapProfileData.profile.status_emoji,
+            status_emoji_display_info: swapProfileData.profile.status_emoji_display_info,
+            status_expiration: swapProfileData.profile.status_expiration,
+            pronouns: swapProfileData.profile.pronouns,
+            first_name: swapProfileData.profile.first_name,
+            last_name: swapProfileData.profile.last_name,
+        };
+
+        // confirm swap
+        log.info(`You are swapping with ${swapProfile.display_name}!`);
+        const confirmSwap = await confirm("Are you sure you want to swap profiles?");
+        if (!confirmSwap) {
+            log.error("Swap cancelled. Please try again.");
+        } else {
+            // swap
+            log.info("Swapping profiles...");
+            const swapResponse = await fetch(`https://slack.com/api/users.profile.set`, {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${profile.token.authed_user.access_token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    profile: swapProfile
+                })
+            });
+
+            const swapResponseData = await swapResponse.json();
+
+            // get user's profile image
+            const imageResponse = await fetch(swapProfileData.profile.image_512)
+            Bun.write('new-profile-image.jpg', await imageResponse.arrayBuffer());
+
+            const formData = new FormData();
+            const blob = await Bun.file('new-profile-image.jpg');
+            formData.append('image', blob);
+
+            const swapImageResponse = await fetch(`https://slack.com/api/users.setPhoto`, {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${profile.token.authed_user.access_token}`,
+                },
+                body: formData
+            });
+
+            const swapImageData = await swapImageResponse.json();
+
+            if (!swapResponseData.ok || !swapImageData.ok) {
+                log.error("Failed to swap profiles. Please try again.");
+                console.log(swapResponseData, swapImageData);
+            } else {
+                // confirm swap completed
+                log.info("Profile swapped successfully!");
+            }
+
+            // notify user that their old profile is saved
+            log.info("Your old profile has been saved. You can restore it at any time by rerunning this program.");
+        }
     }
-    // else
-    // choose user to swap with
-
-    // confirm swap
-
-    // swap
-
-    // confirm swap completed
-
-    // notify user that their old profile is saved
 }
+
 outro("Thanks for using Swapper! Have a great day!");
