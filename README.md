@@ -1,6 +1,6 @@
 # swapper
 
-Hi! I assume if you are here you may want to run this thing./
+Hi! I assume if you are here you may want to run this thing
 
 Its pretty simple to run: 
 1. create a slack app with the `users.profile:read` and `users.profile:write` scopes in the user token field
